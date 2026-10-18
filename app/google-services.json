@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "900670400298",
+    "firebase_url": "https://food6965p-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "food6965p",
+    "storage_bucket": "food6965p.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:900670400298:android:2fdbd0c924228ebc8a6053",
+        "android_client_info": {
+          "package_name": "com.example.shopeefooddriver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBfb2pNqpzTQSjky-O14HAV_lPcwTGpIX4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
