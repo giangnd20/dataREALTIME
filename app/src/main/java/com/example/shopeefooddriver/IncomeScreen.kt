@@ -16,10 +16,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.shopeefooddriver.data.IncomeSummary
+import kotlinx.coroutines.flow.emptyFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,11 +34,10 @@ import java.util.Locale
 @Composable
 fun IncomeScreen() {
     val uid = FirebaseRepository.currentUid()
-    val income by if (uid != null) {
-        FirebaseRepository.observeIncome(uid).collectAsState(initial = null)
-    } else {
-        remember { mutableStateOf(null) }
+    val flow = remember(uid) {
+        if (uid != null) FirebaseRepository.observeIncome(uid) else emptyFlow<IncomeSummary>()
     }
+    val income by flow.collectAsStateWithLifecycle<IncomeSummary, IncomeSummary?>(null)
 
     Column(
         modifier = Modifier
@@ -117,7 +117,6 @@ fun IncomeItem(day: String, orders: String, amount: String) {
     HorizontalDivider()
 }
 
-private fun formatMoney(amount: Long): String {
-    val formatter = NumberFormat.getInstance(Locale("vi", "VN"))
-    return "${formatter.format(amount)}đ"
-}
+private val moneyFormatter: NumberFormat = NumberFormat.getInstance(Locale("vi", "VN"))
+
+private fun formatMoney(amount: Long): String = "${moneyFormatter.format(amount)}đ"

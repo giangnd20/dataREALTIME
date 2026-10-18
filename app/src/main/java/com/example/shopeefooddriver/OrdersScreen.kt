@@ -25,7 +25,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,14 +35,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.widget.Toast
 import com.example.shopeefooddriver.data.FirebaseRepository
 import com.example.shopeefooddriver.data.Order
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @Composable
 fun OrdersScreen() {
-    val orders by FirebaseRepository.observeOrders().collectAsState(initial = emptyList())
+    // remember: nếu không, mỗi lần recompose sẽ tạo Flow mới -> hủy & đăng ký lại listener (tải lại dữ liệu)
+    val ordersFlow = remember { FirebaseRepository.observeOrders() }
+    val orders by ordersFlow.collectAsStateWithLifecycle<List<Order>, List<Order>?>(null)
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var acceptingId by remember { mutableStateOf<String?>(null) }
 
@@ -59,13 +65,17 @@ fun OrdersScreen() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Bạn đang online • Có ${orders.size} đơn gần bạn",
+            text = orders?.let {
+                val count = if (it.size >= FirebaseRepository.ORDERS_LIMIT) "${it.size}+" else "${it.size}"
+                "Bạn đang online • Có $count đơn gần bạn"
+            } ?: "Bạn đang online",
             color = Color(0xFF00A651)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (orders.isEmpty()) {
+        val list = orders
+        if (list == null) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -73,12 +83,19 @@ fun OrdersScreen() {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator(color = Color(0xFFEE4D2D))
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("Đang tải đơn hàng từ Firebase...", color = Color.Gray)
+                    Text("Đang tải đơn hàng...", color = Color.Gray)
                 }
+            }
+        } else if (list.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Hiện chưa có đơn nào đang chờ", color = Color.Gray)
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(orders, key = { it.id }) { order ->
+                items(list, key = { it.id }, contentType = { "order" }) { order ->
                     OrderCard(
                         order = order,
                         isAccepting = acceptingId == order.id,
@@ -88,6 +105,15 @@ fun OrdersScreen() {
                             scope.launch {
                                 try {
                                     FirebaseRepository.acceptOrder(order.id, uid)
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    // Thường do đơn đã có tài xế khác nhận (rules từ chối) hoặc mất mạng
+                                    Toast.makeText(
+                                        context,
+                                        "Không nhận được đơn – có thể đã có người nhận trước.",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 } finally {
                                     acceptingId = null
                                 }

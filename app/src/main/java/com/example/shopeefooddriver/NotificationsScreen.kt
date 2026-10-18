@@ -16,10 +16,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.OutlinedButton
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.emptyFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,11 +36,12 @@ import com.example.shopeefooddriver.data.NotificationItem
 @Composable
 fun NotificationsScreen() {
     val uid = FirebaseRepository.currentUid()
-    val notifications by if (uid != null) {
-        FirebaseRepository.observeNotifications(uid).collectAsState(initial = emptyList())
-    } else {
-        remember { mutableStateOf(emptyList<NotificationItem>()) }
+    var limit by rememberSaveable { mutableIntStateOf(FirebaseRepository.PAGE_SIZE) }
+    val flow = remember(uid, limit) {
+        if (uid != null) FirebaseRepository.observeNotifications(uid, limit) else emptyFlow<List<NotificationItem>>()
     }
+    val notifications by flow.collectAsStateWithLifecycle<List<NotificationItem>, List<NotificationItem>?>(null)
+    val list = notifications
 
     Column(
         modifier = Modifier
@@ -50,7 +55,7 @@ fun NotificationsScreen() {
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (notifications.isEmpty()) {
+        if (list == null) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -61,9 +66,16 @@ fun NotificationsScreen() {
                     Text("Đang tải thông báo...", color = Color.Gray)
                 }
             }
+        } else if (list.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Chưa có thông báo", color = Color.Gray)
+            }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(notifications, key = { it.id }) { item ->
+                items(list, key = { it.id }, contentType = { "notification" }) { item ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -76,6 +88,16 @@ fun NotificationsScreen() {
                             fontSize = 14.sp,
                             fontWeight = if (item.read) FontWeight.Normal else FontWeight.Medium
                         )
+                    }
+                }
+                if (list.size >= limit) {
+                    item {
+                        OutlinedButton(
+                            onClick = { limit += FirebaseRepository.PAGE_SIZE },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Xem thêm")
+                        }
                     }
                 }
             }

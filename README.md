@@ -25,7 +25,7 @@ Ví dụ tạo sẵn:
 - Email: `driver@shopeefood.demo`
 - Password: `Driver@123`
 
-Sau lần đăng nhập đầu tiên, app sẽ tự seed dữ liệu demo (hồ sơ, ví, đơn, thu nhập, thông báo) vào Realtime Database nếu chưa có.
+Sau lần đăng nhập đầu tiên, app chỉ tự tạo **hồ sơ tài xế** (`drivers/{uid}`). Ví, giao dịch, thu nhập, thông báo và đơn hàng do **server/admin** tạo (Firebase Console, Admin SDK hoặc Cloud Functions) vì rules không cho client tự ghi.
 
 ## Cấu trúc Firebase
 
@@ -67,17 +67,28 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`
 
 Hoặc dùng GitHub Actions (workflow Build APK).
 
+## Hiệu năng với dữ liệu lớn (hàng chục nghìn bản ghi)
+
+- Đơn hàng: query `orderByChild("status").equalTo("pending").limitToLast(50)` – lọc ở server, cần `.indexOn` (đã có trong rules).
+- Giao dịch / thông báo: `orderByKey().limitToLast(30)` + nút **Xem thêm** (mỗi lần +30). Dữ liệu mới **phải ghi bằng `push().key`** để thứ tự theo thời gian đúng.
+- Bật cache offline (disk persistence) trong `ShopeeFoodDriverApp`.
+- Flow được `remember` + `collectAsStateWithLifecycle` (không đăng ký lại listener mỗi lần recompose, tự ngắt khi app ở nền).
+- Danh sách dùng `LazyColumn`; parse JSON ở luồng nền.
+
+## Deploy Security Rules
+
+```bash
+npm i -g firebase-tools
+firebase login
+firebase use food6965p
+firebase deploy --only database
+```
+
+Hoặc dán nội dung `database.rules.json` vào Firebase Console → Realtime Database → Rules.
+Tóm tắt rules: mặc định chặn hết; tài xế chỉ đọc dữ liệu của chính mình; ví/giao dịch/thu nhập chỉ đọc (ghi qua server); đơn hàng chỉ đọc qua query `pending` giới hạn 50 (hoặc đơn của chính mình) và chỉ được chuyển `pending → accepted` với `driverId` = uid của mình.
+
 ## Lưu ý quan trọng
 
 1. **Firebase Auth**: Phải bật Email/Password trong Firebase Console → Authentication → Sign-in method.
-2. **Realtime Database Rules**: Tạm thời có thể để test mode hoặc rules cho phép đọc/ghi cho user đã đăng nhập:
-   ```json
-   {
-     "rules": {
-       ".read": "auth != null",
-       ".write": "auth != null"
-     }
-   }
-   ```
-3. Package name: `com.example.shopeefooddriver` (đã khớp với google-services.json).
-4. Đây là bản demo – không kết nối backend thật của ShopeeFood.
+2. Package name: `com.example.shopeefooddriver` (đã khớp với google-services.json).
+3. Đây là bản demo – không kết nối backend thật của ShopeeFood.

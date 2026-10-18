@@ -18,10 +18,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.emptyFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,11 +34,10 @@ import com.example.shopeefooddriver.data.FirebaseRepository
 @Composable
 fun ProfileScreen(onLogout: () -> Unit = {}) {
     val uid = FirebaseRepository.currentUid()
-    val driver by if (uid != null) {
-        FirebaseRepository.observeDriver(uid).collectAsState(initial = null)
-    } else {
-        remember { mutableStateOf<Driver?>(null) }
+    val flow = remember(uid) {
+        if (uid != null) FirebaseRepository.observeDriver(uid) else emptyFlow<Driver?>()
     }
+    val driver by flow.collectAsStateWithLifecycle<Driver?, Driver?>(null)
 
     Column(
         modifier = Modifier

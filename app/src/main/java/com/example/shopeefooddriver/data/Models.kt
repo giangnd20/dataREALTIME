@@ -20,7 +20,8 @@ data class Order(
     val fee: String = "",
     val cod: String = "",
     val status: String = "pending", // pending, accepted, delivering, completed
-    val createdAt: Long = 0L
+    val createdAt: Long = 0L,
+    val driverId: String = ""
 )
 
 data class Wallet(
@@ -34,7 +35,8 @@ data class Transaction(
     val title: String = "",
     val amount: Long = 0L,        // positive = income, negative = withdraw
     val date: String = "",
-    val type: String = ""         // income, withdraw, bonus, deposit
+    val type: String = "",        // income, withdraw, bonus, deposit
+    val createdAt: Long = 0L      // dùng để sắp xếp (mới nhất trước)
 )
 
 data class IncomeDay(
