@@ -38,10 +38,10 @@ fun NotificationsScreen() {
     val uid = FirebaseRepository.currentUid()
     var limit by rememberSaveable { mutableIntStateOf(FirebaseRepository.PAGE_SIZE) }
     val flow = remember(uid, limit) {
-        if (uid != null) FirebaseRepository.observeNotifications(uid, limit) else emptyFlow<List<NotificationItem>>()
+        if (uid != null) FirebaseRepository.observeNotifications(uid, limit) else emptyFlow()
     }
-    val notifications by flow.collectAsStateWithLifecycle<List<NotificationItem>, List<NotificationItem>?>(null)
-    val list = notifications
+    // Flow<List<NotificationItem>> → initialValue emptyList (không null)
+    val notifications by flow.collectAsStateWithLifecycle(initialValue = emptyList())
 
     Column(
         modifier = Modifier
@@ -55,18 +55,7 @@ fun NotificationsScreen() {
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (list == null) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = Color(0xFFEE4D2D))
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("Đang tải thông báo...", color = Color.Gray)
-                }
-            }
-        } else if (list.isEmpty()) {
+        if (notifications.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -75,7 +64,7 @@ fun NotificationsScreen() {
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(list, key = { it.id }, contentType = { "notification" }) { item ->
+                items(notifications, key = { it.id }, contentType = { "notification" }) { item ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -90,7 +79,7 @@ fun NotificationsScreen() {
                         )
                     }
                 }
-                if (list.size >= limit) {
+                if (notifications.size >= limit) {
                     item {
                         OutlinedButton(
                             onClick = { limit += FirebaseRepository.PAGE_SIZE },

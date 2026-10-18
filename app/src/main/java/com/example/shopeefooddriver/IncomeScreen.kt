@@ -35,9 +35,10 @@ import java.util.Locale
 fun IncomeScreen() {
     val uid = FirebaseRepository.currentUid()
     val flow = remember(uid) {
-        if (uid != null) FirebaseRepository.observeIncome(uid) else emptyFlow<IncomeSummary>()
+        if (uid != null) FirebaseRepository.observeIncome(uid) else emptyFlow()
     }
-    val income by flow.collectAsStateWithLifecycle<IncomeSummary, IncomeSummary?>(null)
+    // Flow<IncomeSummary> → initialValue phải cùng kiểu (không null)
+    val income by flow.collectAsStateWithLifecycle(initialValue = IncomeSummary())
 
     Column(
         modifier = Modifier
@@ -51,41 +52,35 @@ fun IncomeScreen() {
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (income == null) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = Color(0xFFEE4D2D))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFEE4D2D))
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text("Tổng thu nhập", color = Color.White)
+                Text(
+                    formatMoney(income.weekTotal),
+                    color = Color.White,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "${income.orderCount} đơn • Thưởng: ${formatMoney(income.bonus)}",
+                    color = Color.White.copy(alpha = 0.9f)
+                )
             }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text("Chi tiết theo ngày", fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (income.days.isEmpty()) {
+            Text("Chưa có dữ liệu thu nhập", color = Color.Gray, fontSize = 14.sp)
         } else {
-            val data = income!!
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFEE4D2D))
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text("Tổng thu nhập", color = Color.White)
-                    Text(
-                        formatMoney(data.weekTotal),
-                        color = Color.White,
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "${data.orderCount} đơn • Thưởng: ${formatMoney(data.bonus)}",
-                        color = Color.White.copy(alpha = 0.9f)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text("Chi tiết theo ngày", fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-
-            data.days.forEach { day ->
+            income.days.forEach { day ->
                 IncomeItem(
                     day = day.day,
                     orders = "${day.orders} đơn",

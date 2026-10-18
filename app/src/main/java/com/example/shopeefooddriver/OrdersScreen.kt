@@ -46,9 +46,10 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun OrdersScreen() {
-    // remember: nếu không, mỗi lần recompose sẽ tạo Flow mới -> hủy & đăng ký lại listener (tải lại dữ liệu)
+    // remember: nếu không, mỗi lần recompose sẽ tạo Flow mới -> hủy & đăng ký lại listener
     val ordersFlow = remember { FirebaseRepository.observeOrders() }
-    val orders by ordersFlow.collectAsStateWithLifecycle<List<Order>, List<Order>?>(null)
+    // Flow<List<Order>> → initialValue phải là List (không null)
+    val orders by ordersFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var acceptingId by remember { mutableStateOf<String?>(null) }
@@ -65,28 +66,20 @@ fun OrdersScreen() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = orders?.let {
-                val count = if (it.size >= FirebaseRepository.ORDERS_LIMIT) "${it.size}+" else "${it.size}"
+            text = run {
+                val count = if (orders.size >= FirebaseRepository.ORDERS_LIMIT) {
+                    "${orders.size}+"
+                } else {
+                    "${orders.size}"
+                }
                 "Bạn đang online • Có $count đơn gần bạn"
-            } ?: "Bạn đang online",
+            },
             color = Color(0xFF00A651)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        val list = orders
-        if (list == null) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = Color(0xFFEE4D2D))
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("Đang tải đơn hàng...", color = Color.Gray)
-                }
-            }
-        } else if (list.isEmpty()) {
+        if (orders.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -95,7 +88,7 @@ fun OrdersScreen() {
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(list, key = { it.id }, contentType = { "order" }) { order ->
+                items(orders, key = { it.id }, contentType = { "order" }) { order ->
                     OrderCard(
                         order = order,
                         isAccepting = acceptingId == order.id,

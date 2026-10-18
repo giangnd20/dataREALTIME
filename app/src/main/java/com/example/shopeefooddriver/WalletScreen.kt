@@ -46,14 +46,16 @@ fun WalletScreen() {
     var limit by rememberSaveable { mutableIntStateOf(FirebaseRepository.PAGE_SIZE) }
 
     val walletFlow = remember(uid) {
-        if (uid != null) FirebaseRepository.observeWallet(uid) else emptyFlow<Wallet>()
+        if (uid != null) FirebaseRepository.observeWallet(uid) else emptyFlow()
     }
-    val wallet by walletFlow.collectAsStateWithLifecycle<Wallet, Wallet?>(null)
+    // Flow<Wallet> → initialValue Wallet (không null)
+    val wallet by walletFlow.collectAsStateWithLifecycle(initialValue = Wallet())
 
     val txFlow = remember(uid, limit) {
-        if (uid != null) FirebaseRepository.observeTransactions(uid, limit) else emptyFlow<List<Transaction>>()
+        if (uid != null) FirebaseRepository.observeTransactions(uid, limit) else emptyFlow()
     }
-    val transactions by txFlow.collectAsStateWithLifecycle<List<Transaction>, List<Transaction>?>(null)
+    // Flow<List<Transaction>> → initialValue emptyList
+    val transactions by txFlow.collectAsStateWithLifecycle(initialValue = emptyList())
 
     val w = wallet
     val txs = transactions
@@ -75,25 +77,16 @@ fun WalletScreen() {
         }
 
         item {
-            if (w == null) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(120.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = Color(0xFFEE4D2D))
-                }
-            } else {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Text("Số dư khả dụng", color = Color.Gray)
-                        Text(
-                            formatMoney(w.balance),
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text("Tiền ký quỹ: ${formatMoney(w.deposit)}", fontSize = 14.sp)
-                    }
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text("Số dư khả dụng", color = Color.Gray)
+                    Text(
+                        formatMoney(w.balance),
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("Tiền ký quỹ: ${formatMoney(w.deposit)}", fontSize = 14.sp)
                 }
             }
             Spacer(modifier = Modifier.height(20.dp))
@@ -105,7 +98,7 @@ fun WalletScreen() {
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(
-                    onClick = { /* Nạp tiền - demo, có thể mở dialog sau */ },
+                    onClick = { /* Nạp tiền - demo */ },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00A651))
                 ) {
@@ -124,15 +117,6 @@ fun WalletScreen() {
         }
 
         when {
-            txs == null -> item {
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(80.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = Color(0xFFEE4D2D))
-                }
-            }
-
             txs.isEmpty() -> item {
                 Text("Chưa có giao dịch", color = Color.Gray, fontSize = 14.sp)
             }
@@ -143,7 +127,6 @@ fun WalletScreen() {
                         if (tx.amount >= 0) "+${formatMoney(tx.amount)}" else formatMoney(tx.amount)
                     TransactionItem(tx.title, amountStr, tx.date)
                 }
-                // Còn dữ liệu cũ hơn khi số dòng nhận được đã chạm limit
                 if (txs.size >= limit) {
                     item {
                         OutlinedButton(

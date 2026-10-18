@@ -35,9 +35,10 @@ import com.example.shopeefooddriver.data.FirebaseRepository
 fun ProfileScreen(onLogout: () -> Unit = {}) {
     val uid = FirebaseRepository.currentUid()
     val flow = remember(uid) {
-        if (uid != null) FirebaseRepository.observeDriver(uid) else emptyFlow<Driver?>()
+        if (uid != null) FirebaseRepository.observeDriver(uid) else emptyFlow()
     }
-    val driver by flow.collectAsStateWithLifecycle<Driver?, Driver?>(null)
+    // Flow<Driver?> → initialValue null hợp lệ
+    val driver by flow.collectAsStateWithLifecycle(initialValue = null)
 
     Column(
         modifier = Modifier
